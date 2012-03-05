@@ -3,10 +3,6 @@
         prism.keyboard
         overtone.live))
 
-;; =~ (1/1 26/25 14/13 10/9 8/7 6/5 5/4 9/7 4/3 7/5 10/7 3/2 14/9 8/5 5/3 7/4 9/5 13/7 25/13)
-(def nineteen
-  (tonality (equal-temperament 19) 200.0 48))
-
 (definst plunk [freq 200 vel 0.8]
   (* vel
      (env-gen (perc 0.01 0.2) 1 1 0 1 :action FREE)
@@ -160,11 +156,6 @@
     (dosync
      (ref-set keyboard new-keyboard))))
   
-  ;; (cond 
-  ;;  (= (event :cmd) 144) (instrument (nineteen (event :note)) :amp (/ (event :vel) 128.0))
-  ;;  (= (event :cmd) 176) (println (str "command " (event :note) ": " (event :vel)))
-  ;;  (= (event :cmd) 224) (println (str "pitch: " (event :vel) "-" (event :note)))))
-
 (defn boot-radium
   []
   (let [radium49 (midi-in "Port 1")]

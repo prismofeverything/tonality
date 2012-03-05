@@ -19,6 +19,11 @@
   (let [step (Math/pow 2 (/ 1 n))]
     (take n (iterate #(* step %) 1.0))))
 
+;; Nineteen tone equal temperament -------------
+;;   =~ (1/1 26/25 14/13 10/9 8/7 6/5 5/4 9/7 4/3 7/5 10/7 3/2 14/9 8/5 5/3 7/4 9/5 13/7 25/13)
+(def nineteen
+  (tonality (equal-temperament 19) 200.0 48))
+
 (defn- find-octave
   [note order]
   (let [level (quot note order)
