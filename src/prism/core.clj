@@ -1,0 +1,171 @@
+(ns prism.core
+  (:use prism.tonality
+        prism.keyboard
+        overtone.live))
+
+;; =~ (1/1 26/25 14/13 10/9 8/7 6/5 5/4 9/7 4/3 7/5 10/7 3/2 14/9 8/5 5/3 7/4 9/5 13/7 25/13)
+(def nineteen
+  (tonality (equal-temperament 19) 200.0 48))
+
+(definst plunk [freq 200 vel 0.8]
+  (* vel
+     (env-gen (perc 0.01 0.2) 1 1 0 1 :action FREE)
+     (+ (sin-osc (/ freq 2))
+        (rlpf (saw freq) (* 1.1 freq) 0.4))))
+
+(definst sawing [freq 200.0 vel 0.8]
+  (* vel
+     (saw freq)))
+
+(definst sines [freq 200.0 vel 0.8]
+  (* vel
+     (sin-osc freq)))
+
+(definst mooger
+  "Choose 0, 1, or 2 for saw, sin, or pulse"
+  [freq {:default 60 :min 0}
+   amp  {:default 0.3 :min 0 :max 1}
+   osc1 {:default 0 :min 0 :max 2 :step 1}
+   osc2 {:default 1 :min 0 :max 2 :step 1}
+   osc1-level {:default 0.5 :min 0 :max 1 :step 0.01}
+   osc2-level {:default 0 :min 0 :max 1 :step 0.01}
+   cutoff {:default 500 :min 0 :max 20000 :step 1}
+   attack {:default 0.0001 :min 0.0001 :max 5 :step 0.001}
+   decay {:default 0.3 :min 0.0001 :max 5 :step 0.001}
+   sustain {:default 0.99 :min 0.0001 :max 1 :step 0.001}
+   release {:default 0.0001 :min 0.0001 :max 6 :step 0.001}
+   fattack {:default 0.0001 :min 0.0001 :max 6 :step 0.001}
+   fdecay {:default 0.3 :min 0.0001 :max 6 :step 0.001}
+   fsustain {:default 0.999 :min 0.0001 :max 1 :step 0.001}
+   frelease {:default 0.0001 :min 0.0001 :max 6 :step 0.001}
+   gate 1]
+  (let [osc-bank-1 [(saw freq) (sin-osc freq) (pulse freq)]
+        osc-bank-2 [(saw freq) (sin-osc freq) (pulse freq)]
+        amp-env (env-gen (adsr attack decay sustain release) gate :action FREE)
+        f-env (env-gen (adsr fattack fdecay fsustain frelease) gate)
+        s1 (* osc1-level (select osc1 osc-bank-1))
+        s2 (* osc2-level (select osc2 osc-bank-2))
+        filt (moog-ff (+ s1 s2) (* cutoff f-env) 3)]
+    (* amp filt)))
+
+(definst bowed
+  [freq 60 amp 0.8 gate 1 
+   bow-offset 0 bow-slope 0.5 bow-position 0.75 vib-freq 6.127 vib-gain 0.2]
+  (let [beta-ratio   (+ 0.027236 (* 0.2 bow-position))
+        base-delay   (reciprocal freq)
+        [fb1 fb2]    (local-in 2)
+        vibrato      (* (sin-osc vib-freq) vib-gain)
+        neck-delay   (+ (* base-delay (- 1 beta-ratio)) (* base-delay vibrato))
+        neck         (delay-l fb1 0.05 neck-delay)
+        nut-refl     (neg neck)
+        bridge       (delay-l fb2 0.025 (* base-delay beta-ratio))
+        string-filt  (one-pole (* bridge 0.95) 0.55)
+        bridge-refl  (neg string-filt)
+        adsr         (* amp (env-gen (adsr 0.02 3.005 1.0 0.01) gate :action FREE))
+        string-vel   (+ bridge-refl nut-refl)
+        vel-diff     (- adsr string-vel)
+        slope        (- 5.0 (* 4 bow-slope))
+        bow-table    (clip:ar (pow (abs (+ (* (+ vel-diff bow-offset) slope) 0.75 )) -4) 0 1)
+        new-vel       (* vel-diff bow-table)]
+   (local-out (+ [bridge-refl nut-refl] new-vel))
+   (resonz (* bridge 0.5) 500 0.85)))
+
+(definst flute
+  [freq 440 amp 1.0 gate 1 endreflection 0.5 jetreflection 0.5 
+   jetratio 0.32 noise-gain 0.15 vibfreq 5.925 vib-gain 0.0 amp 1.0]
+  (let [nenv           (env-gen (linen 0.2 0.03 0.5 0.5) gate :action FREE)
+        adsr           (+ (* amp 0.2) (env-gen (adsr 0.005 0.01 1.1 0.01) gate :action FREE))
+        noise          (* (white-noise) noise-gain)
+        vibrato        (sin-osc vibfreq 0 vib-gain)
+        delay          (reciprocal (* freq 0.66666))
+        lastout        (local-in 1)
+        breathpressure (* adsr (+ noise, vibrato))
+        filter         (leak-dc (one-pole (neg lastout) 0.7))
+        pressurediff   (- breathpressure (* jetreflection filter))
+        jetdelay       (delay-l pressurediff 0.025 (* delay jetratio))
+        jet            (clip2 (* jetdelay (- (squared jetdelay) 1.0)) 1.0)
+        boredelay      (delay-l (+ jet (* endreflection filter) 0.05 delay))]
+    (local-out boredelay)
+    (* 0.3 boredelay amp nenv)))
+
+(definst rise-fall-pad
+  [freq 440 t 4 amt 0.3 amp 0.8]
+  (let [f-env      (env-gen (perc t t) 1 1 0 1 FREE)
+        src        (saw [freq (* freq 1.01)])
+        signal     (rlpf (* 0.3 src)
+                         (+ (* 0.6 freq) (* f-env 2 freq)) 0.2)
+        k          (/ (* 2 amt) (- 1 amt))
+        distort    (/ (* (+ 1 k) signal) (+ 1 (* k (abs signal))))
+        gate       (pulse (* 2 (+ 1 (sin-osc:kr 0.05))))
+        compressor (compander distort gate 0.01 1 0.5 0.01 0.01)
+        dampener   (+ 1 (* 0.5 (sin-osc:kr 0.5)))
+        reverb     (free-verb compressor 0.5 0.5 dampener)
+        echo       (comb-n reverb 0.4 0.3 0.5)]
+    (* amp echo)))
+
+(definst pad
+  [freq 60 t 10 amt 0.3 amp 0.1 a 0.4 d 0.5 s 0.8 r 2]
+  (let [lfo        (+ 2 (* 0.01 (sin-osc:kr 5 (rand 1.5))))
+        src        (apply + (saw [freq (* freq lfo)]))
+        env        (env-gen (adsr a d s r) (sin-osc:kr 0.2))
+        f-env      (x-line:kr 0.001 4 t)
+        src        (* env src)
+        signal     (rlpf src (+ (* 0.3 freq) (* f-env 2 freq)) 0.5)
+        k          (/ (* 4 amt) (- 1 amt))
+        dist       (clip2 (/ (* (+ 1 k) signal) (+ 1 (* k (abs signal))))
+                          0.03)
+        snd        (* amp dist (line:kr 1 0 t))]
+    src))
+
+(definst overpad
+  [freq 60 amp 0.7 attack 0.001 release 2]
+  (let [env   (env-gen (perc attack release) :action FREE)
+        f-env (+ freq (* 3 freq (env-gen (perc 0.012 (- release 0.1)))))
+        bfreq (/ freq 2)
+        sig   (apply +
+                     (concat (* 0.7 (sin-osc [bfreq (* 0.99 bfreq)]))
+                             (lpf (saw [freq (* freq 1.01)]) f-env)))
+        audio (* amp env sig)]
+    audio))
+
+(definst buzz
+  [pitch 40 cutoff 300 dur 200]
+  (let [lpf-lev (* (+ 1 (lf-noise1:kr 10)) 400)
+        a (lpf (saw (midicps pitch)) lpf-lev)
+        b (sin-osc (midicps (- pitch 12)))
+        env (env-gen 1 1 0 1 2 (perc 0.01 (/ dur 1000)))]
+    (* env (+ a b))))
+
+(definst b3
+  [freq 60 amp 0.8 gate 1.0 a 0.01 d 3 s 1 r 0.01]
+  (let [waves (sin-osc [(* 0.5 freq)
+                        freq
+                        (* (/ 3 2) freq)
+                        (* 2 freq)
+                        (* freq 2 (/ 3 2))
+                        (* freq 2 2)
+                        (* freq 2 2 (/ 5 4))
+                        (* freq 2 2 (/ 3 2))
+                        (* freq 2 2 2)])
+        snd (apply + waves)
+        env (env-gen (adsr a d s r) gate :action FREE)]
+    (* amp env snd 0.1)))
+
+(def keyboard (ref (blank-keyboard)))
+(def instrument b3)
+
+(defn play-instrument
+  [event ts]
+  (if-let [new-keyboard (keyboard-event @keyboard instrument nineteen event)]
+    (dosync
+     (ref-set keyboard new-keyboard))))
+  
+  ;; (cond 
+  ;;  (= (event :cmd) 144) (instrument (nineteen (event :note)) :amp (/ (event :vel) 128.0))
+  ;;  (= (event :cmd) 176) (println (str "command " (event :note) ": " (event :vel)))
+  ;;  (= (event :cmd) 224) (println (str "pitch: " (event :vel) "-" (event :note)))))
+
+(defn boot-radium
+  []
+  (let [radium49 (midi-in "Port 1")]
+    (midi-handle-events radium49 play-instrument)))
