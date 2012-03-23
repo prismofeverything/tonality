@@ -1,5 +1,5 @@
 (ns prism.keyboard
-  (:use overtone.live))
+  (:use overtone.core))
 
 (defn blank-keyboard
   []
@@ -15,7 +15,7 @@
       (update-in keyboard [:keys] #(dissoc % note)))
     (let [tone (tonality note)
           amp (/ vel 127.0)
-          synth (instrument tone :amp amp)]
+          synth (instrument :freq tone :amp amp :vel vel)]
       (println synth)
       (assoc-in keyboard [:keys note] synth))))
 
