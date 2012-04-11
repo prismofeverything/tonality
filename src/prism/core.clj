@@ -94,6 +94,20 @@
         reverb (free-verb clp 0.4 0.8 0.2)]
     (* amp (env-gen (adsr a d s r) gate :action FREE) reverb)))
 
+(definst orbit
+  [freq {:default 60.0 :min 0.0}
+   amp  {:default 0.8 :min 0.01 :max 0.99}
+   gate 1 a 0.01 d 0.6 s 0.8 r 0.7
+   divergence 1.1
+   harmonic-span 50
+   harmonic-base 5]
+  (let [series (take 9 (map #(vec [(* % (* freq 0.5)) (/ 1.0 %)]) (iterate #(+ 1.0 %) divergence)))
+        deathstar
+        (* 0.03
+           (env-gen (adsr a d s r) gate :action FREE)
+           (apply + (map (fn [[f m]] (sin-osc (+ f (* 10 (sin-osc (* 5 (+ 1 (pink-noise)))))) (rlpf (lf-noise2 (+ (* (+ 1 (pink-noise)) harmonic-span) harmonic-base) m) 50 0.4))) series)))]
+    (* amp deathstar)))
+
 (definst hybrid
   [freq {:default 60.0 :min 0.0}
    amp  {:default 0.8 :min 0.01 :max 0.99}
@@ -101,8 +115,8 @@
    dur  {:default 2}
    decay {:default 30}
    coef {:default 0.01}
-   divergence {:default 1.01}
-   gate 1 a 0.01 d 0.6 s 0.8 r 0.7]
+   divergence {:default 1.00}
+   gate 1 a 1 d 0.6 s 0.8 r 0.7]
   (let [noize (* 0.8 (white-noise))
         trig (* 0.8 (pink-noise))
         unfreq (* 0.5 freq)
@@ -120,7 +134,8 @@
 ;        (free-verb
          (* 0.03
             (env-gen (adsr a d s r) gate :action FREE)
-            (apply + (map (fn [[f m]] (sin-osc f m)) series)))
+            ;;(apply + (map (fn [[f m]] (sin-osc f (rlpf (lf-noise2 (+ (* (rand) 15) 5) m) 20 0.4))) series)))
+            (apply + (map (fn [[f m]] (sin-osc f (rlpf (pink-noise m) 20 0.4))) series)))
                                         ;        0.4 0.4 0.7)
         ]
     ;;(* amp (+ prc raw))))
@@ -303,7 +318,7 @@
   (tonality (equal-temperament 51) 200.0 48))
 
 (def keyboard (ref (blank-keyboard)))
-(def instrument hybrid)
+(def instrument b3)
 (def tones fifty-one)
 (def tones nineteen)
 
