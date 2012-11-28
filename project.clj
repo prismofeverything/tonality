@@ -1,4 +1,4 @@
-(defproject prism "0.0.1"
+(defproject tonality "0.0.1"
   :description "Tonalities for mapping tones to frequencies"
   :dependencies [[org.clojure/clojure "1.3.0"]
                  [overtone "0.7.1"]]

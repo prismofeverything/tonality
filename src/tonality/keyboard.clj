@@ -1,4 +1,4 @@
-(ns prism.keyboard
+(ns tonality.keyboard
   (:use overtone.core))
 
 (defn blank-keyboard

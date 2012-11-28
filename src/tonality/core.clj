@@ -1,13 +1,13 @@
-(ns prism.core
-  (:use prism.tonality
-        prism.keyboard
+(ns tonality.core
+  (:use tonality.tonality
+        tonality.keyboard
         overtone.core))
 
 (defn harmonic-series
   [n f]
   (take n (map #(vec [(* % f) (/ 1.0 %)]) (iterate inc 1))))
 
-(connect-external-server 2345)
+;; (connect-external-server 2345)
 
 ;; (require '[overtone.inst.piano :as piano])
 
@@ -328,6 +328,8 @@
     (dosync
      (ref-set keyboard new-keyboard))))
   
+(boot-internal-server)
+
 (defn boot-radium
   []
   (let [radium49 (midi-in "Port 1")]

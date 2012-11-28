@@ -1,4 +1,5 @@
-(ns prism.tonality)
+(ns tonality.tonality
+  (:require [overtone.algo.chance :as chaos]))
 
 ;; scales are sequences of floating point numbers which represent the ratios from unity
 
@@ -40,7 +41,7 @@
   frequencies as specified by the scale.  The fundamental is the frequency at the root tone.
   The root is the discrete note this tonality starts from."
   [scale fundamental root]
-  (fn [note]
+  (fn [note & whatever]
     (let [order (count scale)
           relative (- note root)
           octave (find-octave relative order)
@@ -48,8 +49,29 @@
           ratio (nth scale tone)
           power (* fundamental (Math/pow 2 octave))
           frequency (* power ratio)]
-      (println frequency)
       frequency)))
+
+(defn shifting-tonality
+  [scales fundamental root period]
+  (let [cycle (* period (count scales))
+        tonalities (map #(tonality % fundamental root) scales)]
+    (fn [tone time]
+      (let [index (-> (mod time cycle) (quot period))
+            tonality (nth tonalities index)]
+        (tonality tone)))))
+
+(defn choose-tonalities
+  [scale num-tones num-scales pad fundamental period]
+  (shifting-tonality
+   (map
+    (fn [_]
+      (let [base (chaos/choose-n num-tones scale)]
+        (sort
+         (apply
+          concat
+          (repeat pad base)))))
+    (range num-scales))
+   fundamental 0 period))
 
 ;; Nineteen tone equal temperament -------------
 ;;   =~ (1/1 26/25 14/13 10/9 8/7 6/5 5/4 9/7 4/3 7/5 10/7 3/2 14/9 8/5 5/3 7/4 9/5 13/7 25/13)

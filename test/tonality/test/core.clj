@@ -1,5 +1,5 @@
-(ns prism.test.core
-  (:use [prism.core])
+(ns tonality.test.core
+  (:use [tonality.core])
   (:use [clojure.test]))
 
 (deftest replace-me ;; FIXME: write
