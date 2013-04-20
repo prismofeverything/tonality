@@ -1,5 +1,7 @@
 (ns tonality.keyboard)
 
+(def midi-normal 0.0078125)
+
 (defn blank-keyboard
   []
   {:keys {} :controls {} :wheel {:base 64 :detail 0} :state {}})

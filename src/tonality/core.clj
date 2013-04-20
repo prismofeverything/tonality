@@ -286,7 +286,9 @@
     (* env (+ a b))))
 
 (definst b3
-  [freq 60 amp 0.8 gate 1.0 a 0.01 d 3 s 1 r 0.01]
+  [freq 60 amp 0.8 gate 1.0
+   a 0.01 d 3 s 1 r 0.01
+   ]
   (let [waves (sin-osc [(* 0.5 freq)
                         freq
                         (* (/ 3 2) freq)
@@ -330,27 +332,47 @@
 (defn play-tone
   [tonality instrument note velocity]
   (let [tone (tonality note)
-        amp (* velocity 0.0078125)
+        amp (* velocity keyboard/midi-normal)
         synth (instrument :freq tone :amp amp :vel velocity)]
     synth))
+
+(defn control-parameters
+  [program keyboard]
+  (reduce
+   (fn [parameters [channel level]]
+     (if-let [{label :label scale :scale} (get program channel)]
+       (assoc parameters label (* level scale))
+       parameters))
+   {} (:controls keyboard)))
+
+(defn generate-tone
+  [program tonality instrument note velocity keyboard]
+  (let [tone (tonality note)
+        amp (* velocity keyboard/midi-normal)
+        control (control-parameters program keyboard)
+        parameters (merge-with * {:freq tone :amp amp} control)]
+    (println "CONTROL" control)
+    (println "PROGRAM" program)
+    (println "PARAMETERS" parameters)
+    (apply instrument (mapcat identity parameters))))
 
 (defn stop-tone
   [synth]
   (ctl synth :gate 0))
 
-(defrecord TonalityOrgan [tonality instrument playing]
+(defrecord TonalityOrgan [tonality instrument program playing]
   keyboard/KeyboardResponse
   (on [this keyboard note velocity]
-    (let [synth (play-tone tonality instrument note velocity)]
+    (let [synth (generate-tone program tonality instrument note velocity keyboard)]
       (assoc-in this [:playing note] synth)))
   (off [this keyboard note]
     (stop-tone (get playing note))
     (update-in this [:playing] #(dissoc % note)))
-  (control [this keyboard channel level] this)
+  (control [this keyboard channel level]
+    this)
   (wheel [this keyboard base detail] this))
 
-(def organ 
-  (atom (TonalityOrgan. tones instrument {})))
+(def organ (atom (TonalityOrgan. tones instrument {7 {:label :amp :scale keyboard/midi-normal}} {})))
 
 (defn handle-midi-keyboard
   [event]
