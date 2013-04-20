@@ -1,11 +1,14 @@
 (ns tonality.core
-  (:use tonality.tonality
-        tonality.keyboard
-        overtone.core))
+  (:use overtone.core)
+  (:require [tonality.tonality :as tonality]
+            [tonality.keyboard :as keyboard]))
 
 (defn harmonic-series
   [n f]
   (take n (map #(vec [(* % f) (/ 1.0 %)]) (iterate inc 1))))
+
+(if (server-disconnected?)
+  (boot-internal-server))
 
 ;; (connect-external-server 2345)
 
@@ -74,72 +77,72 @@
         reverb (free-verb clp 0.4 0.8 0.2)]
     (* amp (env-gen (adsr a d s r) gate :action FREE) reverb)))
 
-(definst karplus
-  [freq {:default 60.0 :min 0.0}
-   amp  {:default 0.8 :min 0.01 :max 0.99}
-   rate {:default 6}
-   dur  {:default 2}
-   decay {:default 30}
-   coef {:default 0.001}
-   gate 1 a 0.1 d 1.0 s 1.0 r 1.0]
-  (let [noize (* 0.8 (white-noise))
-        trig (* 0.8 (pink-noise))
-        dly (/ 1.0 freq)
-        plk (pluck noize 1 (/ 1.0 freq) dly
-                   decay
-                   coef)
-        dist (distort plk)
-        filt (rlpf dist (* 12 freq) 0.6)
-        clp (clip2 filt 0.8)
-        reverb (free-verb clp 0.4 0.8 0.2)]
-    (* amp (env-gen (adsr a d s r) gate :action FREE) reverb)))
+;; (definst karplus
+;;   [freq {:default 60.0 :min 0.0}
+;;    amp  {:default 0.8 :min 0.01 :max 0.99}
+;;    rate {:default 6}
+;;    dur  {:default 2}
+;;    decay {:default 30}
+;;    coef {:default 0.001}
+;;    gate 1 a 0.1 d 1.0 s 1.0 r 1.0]
+;;   (let [noize (* 0.8 (white-noise))
+;;         trig (* 0.8 (pink-noise))
+;;         dly (/ 1.0 freq)
+;;         plk (pluck noize 1 (/ 1.0 freq) dly
+;;                    decay
+;;                    coef)
+;;         dist (distort plk)
+;;         filt (rlpf dist (* 12 freq) 0.6)
+;;         clp (clip2 filt 0.8)
+;;         reverb (free-verb clp 0.4 0.8 0.2)]
+;;     (* amp (env-gen (adsr a d s r) gate :action FREE) reverb)))
 
-(definst orbit
-  [freq {:default 60.0 :min 0.0}
-   amp  {:default 0.8 :min 0.01 :max 0.99}
-   gate 1 a 0.01 d 0.6 s 0.8 r 0.7
-   divergence 1.1
-   harmonic-span 50
-   harmonic-base 5]
-  (let [series (take 9 (map #(vec [(* % (* freq 0.5)) (/ 1.0 %)]) (iterate #(+ 1.0 %) divergence)))
-        deathstar
-        (* 0.03
-           (env-gen (adsr a d s r) gate :action FREE)
-           (apply + (map (fn [[f m]] (sin-osc (+ f (* 10 (sin-osc (* 5 (+ 1 (pink-noise)))))) (rlpf (lf-noise2 (+ (* (+ 1 (pink-noise)) harmonic-span) harmonic-base) m) 50 0.4))) series)))]
-    (* amp deathstar)))
+;; (definst orbit
+;;   [freq {:default 60.0 :min 0.0}
+;;    amp  {:default 0.8 :min 0.01 :max 0.99}
+;;    gate 1 a 0.01 d 0.6 s 0.8 r 0.7
+;;    divergence 1.1
+;;    harmonic-span 50
+;;    harmonic-base 5]
+;;   (let [series (take 9 (map #(vec [(* % (* freq 0.5)) (/ 1.0 %)]) (iterate #(+ 1.0 %) divergence)))
+;;         deathstar
+;;         (* 0.03
+;;            (env-gen (adsr a d s r) gate :action FREE)
+;;            (apply + (map (fn [[f m]] (sin-osc (+ f (* 10 (sin-osc (* 5 (+ 1 (pink-noise)))))) (rlpf (lf-noise2 (+ (* (+ 1 (pink-noise)) harmonic-span) harmonic-base) m) 50 0.4))) series)))]
+;;     (* amp deathstar)))
 
-(definst hybrid
-  [freq {:default 60.0 :min 0.0}
-   amp  {:default 0.8 :min 0.01 :max 0.99}
-   rate {:default 6}
-   dur  {:default 2}
-   decay {:default 30}
-   coef {:default 0.01}
-   divergence {:default 1.00}
-   gate 1 a 1 d 0.6 s 0.8 r 0.7]
-  (let [noize (* 0.8 (white-noise))
-        trig (* 0.8 (pink-noise))
-        unfreq (* 0.5 freq)
-        dly (/ 1.0 unfreq)
-        plk (pluck noize 1 (/ 1.0 unfreq) dly
-                   decay
-                   coef)
-        dist (distort plk)
-        filt (rlpf dist (* 12 unfreq) 0.4)
-        clp (clip2 filt 0.8)
-        reverb (free-verb clp 0.4 0.8 0.2)
-        prc (* reverb (env-gen (perc 0.001 1)))
-        series (take 9 (map #(vec [(* % unfreq) (/ 1.0 %)]) (iterate #(+ 1.0 %) divergence)))
-        raw
-;        (free-verb
-         (* 0.03
-            (env-gen (adsr a d s r) gate :action FREE)
-            ;;(apply + (map (fn [[f m]] (sin-osc f (rlpf (lf-noise2 (+ (* (rand) 15) 5) m) 20 0.4))) series)))
-            (apply + (map (fn [[f m]] (sin-osc f (rlpf (pink-noise m) 20 0.4))) series)))
-                                        ;        0.4 0.4 0.7)
-        ]
-    ;;(* amp (+ prc raw))))
-    (* amp raw)))
+;; (definst hybrid
+;;   [freq {:default 60.0 :min 0.0}
+;;    amp  {:default 0.8 :min 0.01 :max 0.99}
+;;    rate {:default 6}
+;;    dur  {:default 2}
+;;    decay {:default 30}
+;;    coef {:default 0.01}
+;;    divergence {:default 1.00}
+;;    gate 1 a 1 d 0.6 s 0.8 r 0.7]
+;;   (let [noize (* 0.8 (white-noise))
+;;         trig (* 0.8 (pink-noise))
+;;         unfreq (* 0.5 freq)
+;;         dly (/ 1.0 unfreq)
+;;         plk (pluck noize 1 (/ 1.0 unfreq) dly
+;;                    decay
+;;                    coef)
+;;         dist (distort plk)
+;;         filt (rlpf dist (* 12 unfreq) 0.4)
+;;         clp (clip2 filt 0.8)
+;;         reverb (free-verb clp 0.4 0.8 0.2)
+;;         prc (* reverb (env-gen (perc 0.001 1)))
+;;         series (take 9 (map #(vec [(* % unfreq) (/ 1.0 %)]) (iterate #(+ 1.0 %) divergence)))
+;;         raw
+;; ;        (free-verb
+;;          (* 0.03
+;;             (env-gen (adsr a d s r) gate :action FREE)
+;;             ;;(apply + (map (fn [[f m]] (sin-osc f (rlpf (lf-noise2 (+ (* (rand) 15) 5) m) 20 0.4))) series)))
+;;             (apply + (map (fn [[f m]] (sin-osc f (rlpf (pink-noise m) 20 0.4))) series)))
+;;                                         ;        0.4 0.4 0.7)
+;;         ]
+;;     ;;(* amp (+ prc raw))))
+;;     (* amp raw)))
 
 (definst flute
   [freq 200 amp 0.8 gate 1 
@@ -312,25 +315,52 @@
 ;;     (* amp env snd)))
 
 (def thirteen
-  (tonality (otonality 16) 200.0 48))
+  (tonality/tonality (tonality/otonality 16) 200.0 48))
 
 (def fifty-one
-  (tonality (equal-temperament 51) 200.0 48))
+  (tonality/tonality (tonality/equal-temperament 51) 200.0 48))
 
-(def keyboard (ref (blank-keyboard)))
+(def keyboard (atom (keyboard/blank-keyboard)))
 (def instrument b3)
 (def tones fifty-one)
-(def tones nineteen)
+(def tones
+  (tonality/tonality tonality/pure-twelve 440.0 72))
+(def tones tonality/nineteen)
 
-(defn play-instrument
-  [event ts]
-  (if-let [new-keyboard (keyboard-event @keyboard instrument tones event)]
-    (dosync
-     (ref-set keyboard new-keyboard))))
-  
-(boot-internal-server)
+(defn play-tone
+  [tonality instrument note velocity]
+  (let [tone (tonality note)
+        amp (* velocity 0.0078125)
+        synth (instrument :freq tone :amp amp :vel velocity)]
+    synth))
+
+(defn stop-tone
+  [synth]
+  (ctl synth :gate 0))
+
+(defrecord TonalityOrgan [tonality instrument playing]
+  keyboard/KeyboardResponse
+  (on [this keyboard note velocity]
+    (let [synth (play-tone tonality instrument note velocity)]
+      (assoc-in this [:playing note] synth)))
+  (off [this keyboard note]
+    (stop-tone (get playing note))
+    (update-in this [:playing] #(dissoc % note)))
+  (control [this keyboard channel level] this)
+  (wheel [this keyboard base detail] this))
+
+(def organ 
+  (atom (TonalityOrgan. tones instrument {})))
+
+(defn handle-midi-keyboard
+  [event]
+  (if (:command event)
+    (let [[new-organ new-keyboard] (keyboard/trigger @keyboard event @organ)]
+      (dosync
+       (swap! organ (constantly new-organ))
+       (swap! keyboard (constantly new-keyboard))))))
 
 (defn boot-radium
   []
   (let [radium49 (midi-in "Port 1")]
-    (midi-handle-events radium49 play-instrument)))
+    (midi-handle-events radium49 #'handle-midi-keyboard)))

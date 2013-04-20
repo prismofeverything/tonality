@@ -2,7 +2,9 @@
   (:require [overtone.algo.chance :as chaos]))
 
 ;; scales are sequences of floating point numbers which represent the ratios from unity
-
+;; traditionally this is a sequence that starts with 1.0 and ends < 2.0,
+;; as any other interval can be expressed relative to its nearest octave.  
+;; (but this is not required)
 (defn otonality
   "Octave scales relative to the given overtone"
   [n]
@@ -74,7 +76,6 @@
    fundamental 0 period))
 
 ;; Nineteen tone equal temperament -------------
-;;   =~ (1/1 26/25 14/13 10/9 8/7 6/5 5/4 9/7 4/3 7/5 10/7 3/2 14/9 8/5 5/3 7/4 9/5 13/7 25/13)
 (def nineteen
   (tonality (equal-temperament 19) 200.0 48))
 
