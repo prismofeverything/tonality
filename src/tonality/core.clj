@@ -303,6 +303,23 @@
         env (env-gen (adsr a d s r) gate :action FREE)]
     (* amp env snd 0.1)))
 
+
+(definst j8
+  [freq 60 amp 0.8 gate 1.0
+   a 0.4 d 0.5 s 0.8 r 2
+   amt 0.3 t 10]
+  (let [lfo        (+ 2 (* 0.01 (sin-osc:kr 5 (rand 1.5))))
+        src        (apply + (saw [freq (* freq lfo)]))
+        env        (env-gen (adsr a d s r) gate :action FREE)
+        f-env      (x-line:kr 0.001 4 t)
+        src        (* env src)
+        signal     (rlpf src (+ (* 0.3 freq) (* f-env 2 freq)) 0.5)
+        k          (/ (* 4 amt) (- 1 amt))
+        dist       (clip2 (/ (* (+ 1 k) signal) (+ 1 (* k (abs signal))))
+                          0.03)
+        snd        (* amp dist (line:kr 1 0 t))]
+    snd))
+
 ;; (definst x3
 ;;   [freq 60 amp 0.1 gate 1.0 overtones 10 a 0.01 d 3 s 1 r 0.01]
 ;;   (let [oscs (map #(list [(* freq %) (/ 0.5 %)]) (iterate inc 1))
@@ -322,7 +339,7 @@
 (def fifty-one
   (tonality/tonality (tonality/equal-temperament 51) 200.0 48))
 
-(def keyboard (atom (keyboard/blank-keyboard)))
+;; (def keyboard (atom (keyboard/blank-keyboard)))
 (def instrument b3)
 (def tones fifty-one)
 (def tones
@@ -340,8 +357,8 @@
   [program keyboard]
   (reduce
    (fn [parameters [channel level]]
-     (if-let [{label :label scale :scale} (get program channel)]
-       (assoc parameters label (* level scale))
+     (if-let [[label range] (get program channel)]
+       (assoc parameters label (* level range))
        parameters))
    {} (:controls keyboard)))
 
@@ -372,15 +389,58 @@
     this)
   (wheel [this keyboard base detail] this))
 
-(def organ (atom (TonalityOrgan. tones instrument {7 {:label :amp :scale keyboard/midi-normal}} {})))
+(def radium-controls
+  [1 7
+   82 83 28 29 16 80 18 19
+   74 71 81 91 2 10 5 21])
 
-(defn handle-midi-keyboard
-  [event]
-  (if (:command event)
-    (let [[new-organ new-keyboard] (keyboard/trigger @keyboard event @organ)]
-      (dosync
-       (swap! organ (constantly new-organ))
-       (swap! keyboard (constantly new-keyboard))))))
+(def organ
+  (atom
+   (TonalityOrgan.
+    tones instrument
+    {7 [:amp keyboard/midi-normal]}
+    {})))
+
+(def pad-organ
+  (TonalityOrgan.
+   tones j8
+   {7 [:amp keyboard/midi-normal]
+    1 [:amt keyboard/midi-normal]
+    82 [:a (* 3.0 keyboard/midi-normal)]
+    83 [:d (* 3.0 keyboard/midi-normal)]
+    28 [:s (* 3.0 keyboard/midi-normal)]
+    29 [:r (* 3.0 keyboard/midi-normal)]
+    2 [:t (* 20.0 keyboard/midi-normal)]
+    }
+   {}))
+
+(def b3-organ
+  (TonalityOrgan.
+   tones b3
+   {7 [:amp keyboard/midi-normal]
+    82 [:a (* 3.0 keyboard/midi-normal)]
+    83 [:d (* 3.0 keyboard/midi-normal)]
+    28 [:s (* 3.0 keyboard/midi-normal)]
+    29 [:r (* 3.0 keyboard/midi-normal)]
+    }
+   {}))
+
+(defn keyboard-organ
+  (atom))
+
+(defn midi-keyboard-handler
+  [organ-born]
+  (let [organ (atom organ-born)
+        keyboard (atom (keyboard/blank-keyboard))]
+    (fn [event]
+      (if (:command event)
+        (let [[new-organ new-keyboard] (keyboard/trigger @keyboard event @organ)]
+          (dosync
+           (swap! organ (constantly new-organ))
+           (swap! keyboard (constantly new-keyboard))))))))
+
+(def handle-midi-keyboard
+  (midi-keyboard-handler pad-organ))
 
 (defn boot-radium
   []
