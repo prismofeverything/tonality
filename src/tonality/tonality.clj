@@ -5,6 +5,7 @@
 ;; traditionally this is a sequence that starts with 1.0 and ends < 2.0,
 ;; as any other interval can be expressed relative to its nearest octave.  
 ;; (but this is not required)
+
 (defn otonality
   "Octave scales relative to the given overtone"
   [n]
@@ -74,6 +75,10 @@
           (repeat pad base)))))
     (range num-scales))
    fundamental 0 period))
+
+(defn harmonic-series
+  [n f]
+  (take n (map #(vec [(* % f) (/ 1.0 %)]) (iterate inc 1))))
 
 ;; Nineteen tone equal temperament -------------
 (def nineteen

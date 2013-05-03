@@ -1,6 +1,6 @@
 (ns tonality.keyboard)
 
-(def midi-normal 0.0078125)
+(def midi-normal (/ 1 127))
 
 (defn blank-keyboard
   []
