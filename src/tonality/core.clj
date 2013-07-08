@@ -1,7 +1,6 @@
 (ns tonality.core
   (:use overtone.core)
   (:require [tonality.keyboard :as keyboard]
-            [tonality.sound :as sound]
             [tonality.organ :as organ]))
 
 (defn midi-keyboard-handler
