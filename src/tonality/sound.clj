@@ -49,6 +49,7 @@
     snd))
 
 (o/definst yellow
+  "additive band-pass filters of varying widths"
   [amp {:default 0.8 :min 0.01 :max 0.99}
    width {:default 0.02 :min 0.01 :max 1}]
   (let [base (* 0.8 (o/white-noise))
@@ -57,6 +58,7 @@
     (* amp (+ a-filter b-filter))))
 
 (o/definst orange
+  "using layered square waves to modulate frequency"
   [amp       {:default 0.8 :min 0.01 :max 0.99}
    step-base {:default 200 :min 40 :max 5000}
    c-step-freq {:default 0.8 :min 0.001 :max 20}
@@ -72,3 +74,26 @@
         base (o/sin-osc :freq scaled)]
     (* amp base)))
 
+(o/definst pink
+  "basic pulse width modulation"
+  [amp {:default 0.8 :min 0.01 :max 0.99}]
+   ;; width {:default 0.5 :min 0.01 :max 0.99}
+   ;; freq {:default 200 :min 20 :max 50000}]
+  (let [mod (* 0.4 (+ 1.1 (o/sin-osc (o/mouse-y 0.01 200 o/EXP))))
+        pulse (o/pulse (o/mouse-x 40 5000 o/EXP) mod)]
+    (* amp pulse)))
+
+(o/definst green
+  "amplitude modulated saw tooth wave"
+  [amp {:default 0.8 :min 0.01 :max 0.99}]
+  (let [modulator (* 0.5 (+ 1 (o/sin-osc (o/mouse-y 1 5000 o/EXP))))
+        carrier (o/saw (o/mouse-x 40 5000 o/EXP))]
+    (* amp modulator carrier)))
+
+(o/definst red
+  "frequency modulated sin wave"
+  [amp {:default 0.8 :min 0.01 :max 0.99}
+   freq {:default 400 :min 40 :max 5000}]
+  (let [modulator (o/sin-osc (o/mouse-y 1 5000 o/EXP))
+        carrier (o/sin-osc (+ freq (* (o/mouse-x 1 5000 o/EXP) modulator)))]
+    (* amp carrier)))
