@@ -16,6 +16,58 @@
         synth (instrument :freq tone :amp amp :vel velocity)]
     synth))
 
+(def dull-partials
+  [0.56
+   0.92
+   1.19
+   1.71
+   2
+   2.74
+   3
+   3.76
+   4.07])
+
+(def partials
+  [0.5
+   1
+   3
+   4.2
+   5.4
+   6.8])
+
+(o/defcgen bell-partials
+  "Bell partial generator"
+  [freq {:default 440 :doc "The fundamental frequency for the partials"}
+   dur  {:default 1.0 :doc "Duration multiplier. Length of longest partial will
+                            be dur seconds"}
+   partials {:default [0.5 1 2 4] :doc "sequence of frequencies which are
+                                        multiples of freq"}]
+  "Generates a series of progressively shorter and quieter enveloped sine waves
+  for each of the partials specified. The length of the envolope is proportional
+  to dur and the fundamental frequency is specified with freq."
+  (:ar
+   (apply +
+          (map
+           (fn [partial proportion]
+             (let [env      (o/env-gen (o/perc 0.01 (* dur proportion)))
+                   vol      (/ proportion 2)
+                   overtone (* partial freq)]
+               (* env vol (o/sin-osc overtone))))
+           partials ;; current partial
+           (iterate #(/ % 2) 1.0)  ;; proportions (1.0  0.5 0.25)  etc
+           ))))
+
+
+(o/definst dull-bell [freq 220 dur 1.0 amp 1.0]
+  (let [snd (* amp (bell-partials freq dur dull-partials))]
+    (o/detect-silence snd :action o/FREE)
+    snd))
+
+(o/definst pretty-bell [freq 220 dur 1.0 amp 1.0]
+  (let [snd (* amp (bell-partials freq dur partials))]
+    (o/detect-silence snd :action o/FREE)
+    snd))
+
 (o/definst b3
   [freq 60 amp 0.8 gate 1.0
    a 0.01 d 3 s 1 r 0.01]
