@@ -15,9 +15,17 @@
            (reset! keyboard new-keyboard)))))))
 
 (def handle-midi-keyboard
-  (midi-keyboard-handler organ/pad-organ))
+  (midi-keyboard-handler organ/formantax-organ))
+
+(defn boot-keyboard
+  [search]
+  (let [keyboard (midi-in search)]
+    (midi-handle-events keyboard #'handle-midi-keyboard)))
 
 (defn boot-radium
   []
-  (let [radium49 (midi-in "Port 1")]
-    (midi-handle-events radium49 #'handle-midi-keyboard)))
+  (boot-keyboard "Port 1"))
+
+(defn boot-emu
+  []
+  (boot-keyboard "E-MU"))

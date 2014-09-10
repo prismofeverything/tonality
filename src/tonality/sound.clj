@@ -149,3 +149,24 @@
   (let [modulator (o/sin-osc (o/mouse-y 1 5000 o/EXP))
         carrier (o/sin-osc (+ freq (* (o/mouse-x 1 5000 o/EXP) modulator)))]
     (* amp carrier)))
+
+(o/definst chameleon
+  [amp {:default 0.8 :min 0.01 :max 0.99}]
+  (let [saws (o/mix (o/saw [80 (o/mouse-y 50 2000 o/EXP) 101 100.5]))
+        wobble (o/lin-lin (o/lf-tri (o/mouse-x 0.1 20 o/EXP)) -1 1 400 4000)]
+    (* amp (o/lpf saws wobble))))
+
+(o/definst formantax
+  [amp {:default 0.8 :min 0.01 :max 0.99}
+   formant {:default 400 :min 20 :max 50000}
+   freq {:default 30 :min 1 :max 1000}
+   window {:default 0.05 :min 0 :max 1.0}
+   mass {:default 0.03 :min 0 :max 1.0}
+   gate 1.0]
+  (let [env (o/env-gen (o/adsr 0.1 1 1 0.1) gate :action o/FREE)
+        threshhold (* formant window)
+        smear (* threshhold (o/brown-noise))
+        trigger (o/impulse:ar (+ formant smear))
+        grains (o/grain-sin:ar 1 trigger mass freq 0 -1 512)]
+    (* amp env grains)))
+

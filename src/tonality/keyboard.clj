@@ -16,7 +16,7 @@
   [response keyboard note velocity]
   (println "note on" (str note ":" velocity))
   (let [new-keyboard (assoc-in keyboard [:keys note] velocity)
-        back (on response new-keyboard note velocity)]
+        back (try (on response new-keyboard note velocity) (catch Exception e (.printStackTrace e)))]
     [back new-keyboard]))
 
 (defn note-off-event
